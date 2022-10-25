@@ -1,0 +1,621 @@
+<!-- Font is Amble taken from fontsquirrel.com-->
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Saulcoin Trading</title>
+    <style>
+        @font-face {
+            font-family: 'amblebold';
+            src: url('fonts/amble-bold-webfont.woff2') format('woff2'),
+                url('fonts/amble-bold-webfont.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+
+        }
+
+        @font-face {
+            font-family: 'amblebold_italic';
+            src: url('fonts/amble-bolditalic-webfont.woff2') format('woff2'),
+                url('fonts/amble-bolditalic-webfont.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+
+        }
+
+        @font-face {
+            font-family: 'ambleitalic';
+            src: url('fonts/amble-italic-webfont.woff2') format('woff2'),
+                url('fonts/amble-italic-webfont.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+
+        }
+
+        @font-face {
+            font-family: 'ambleregular';
+            src: url('fonts/amble-regular-webfont.woff2') format('woff2'),
+                url('fonts/amble-regular-webfont.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+
+        }
+
+        html {
+            background-color: rgb(164, 255, 111);
+        }
+
+        *{
+            margin: 0;
+            padding: 0;
+        }
+
+        .buyButton{
+            background-color: rgb(255, 255, 255);
+            color: #000000;
+            border: 3px solid #000000;
+            padding: 12px 12px;
+            text-align: center;
+            display: inline-block;
+            font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+            font-size: 16px;
+            border-radius: 8px;
+            margin-right: 2px;
+            margin-left: 2px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+        }
+        .buyButton:hover {
+            background-color: #68ff81;
+        }
+
+        .sellButton{
+            background-color: rgb(255, 255, 255);
+            color: #000000;
+            border: 3px solid #000000;
+            padding: 12px 12px;
+            text-align: center;
+            display: inline-block;
+            font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+            font-size: 16px;
+            border-radius: 8px;
+            margin-right: 2px;
+            margin-left: 2px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+        }
+        .sellButton:hover {
+            background-color: rgb(255, 104, 104);
+        }
+
+        p {
+            color: #ffffff;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+<script type="text/javascript">
+    let width = 1600;
+    let height = 625;
+</script>
+<body>
+    <div id="main">
+        <canvas id="myCanvas" width = "1600" height = "625" style="padding-left: 0; padding-right: 0; margin-left: auto; margin-right: auto; display: block; border:4px solid black"></canvas>
+        <div id="buttonDiv">
+            
+        </div>
+    </div>
+
+</body>
+
+<script type="text/javascript">
+
+let coinNames = ["SaulCoin", "KimCoin", "GusCoin", "MikeCoin", "NachoCoin", "HowardCoin", "ChuckCoin"];
+let coinURLs = ["https://i.imgur.com/gAQKMnV.png", "https://i.imgur.com/kGk6Zvb.png", "https://i.imgur.com/d41yd4d.png", "https://i.imgur.com/b1gOhri.png", "https://i.imgur.com/7Uz4nz9.png", "https://i.imgur.com/jG6QzoY.png",
+                "https://i.imgur.com/UDhVPny.png"];
+let coinImages = [];
+let currentEp = 1;
+let currentSe = 4;
+
+let participants = 0;
+
+let marketBuyRate = 0.9;
+let marketSellRate = 1.1;
+
+let coinNameToIndex = new Map();
+
+let coinValues = [0,0,0,0,0,0,0];
+let coinValueText = [];
+let coinSellText = [];
+let coinBalanceText = [];
+
+var ledgerArray = [];
+
+var resolved = 0;
+
+var usdBalance = 0.0;
+var coinBalance = [];
+var bankAccountNode = null;
+var netWorthNode = null;
+var usernameNode = null;
+
+var canvas = document.getElementById("myCanvas");
+var c = canvas.getContext("2d");
+c.fillStyle = "#000000";
+
+
+
+var addToLedgerArray = function(item){
+    var request = new XMLHttpRequest();
+    request.open('GET', 'https://s3.amazonaws.com/saulcoin.com/' + item.trim('\r') + '.ledger', true);
+    request.send(null);
+    request.onreadystatechange = function () {
+        if (request.readyState === 4 && request.status === 200) {
+            ledgerArray.push(request.responseText);
+            resolved += 1;
+            if(resolved == participants){
+                calculateMarketValues();
+            }
+        }
+    }
+}
+
+var updateClient = function(){
+    resolved = 0;
+    var ledgerIndex = "";
+    ledgerArray = [];
+    resolved = 0;
+
+    let promiseIndex = new Promise(function(resolve, reject){
+        var request = new XMLHttpRequest();
+        request.open('GET', 'https://s3.amazonaws.com/saulcoin.com/ledger_index.txt', true);
+        request.send(null);
+        request.onreadystatechange = function () {
+            if (request.readyState === 4 && request.status === 200) {
+                ledgerIndex = request.responseText;
+                resolve();
+            }
+        }
+    });
+
+    var found = 0;
+    var ledgers = []
+    promiseIndex.then(function(value){
+        var ledgerNames = ledgerIndex.split('\n');
+        participants = ledgerNames.length;
+        ledgerNames.forEach(addToLedgerArray);
+
+    })
+}
+
+var calculateNetWorth = function(){
+    var sum = 0;
+    for(var i = 0; i < coinBalance.length; i++){
+        sum += coinBalance[i] * coinValues[i] * marketBuyRate;
+    }
+    return sum;
+}
+
+var calculateMarketValues = async function(){
+    var latestTransactions = [];
+    var latestTransactionDates = [];
+    usdBalance = 0.0;
+    var coef = [0.4, 0.3, 0.2, 0.1];
+    for(var i = 0; i < coinNames.length; i++){
+        var newArr = [];
+        var newDateArr = [];
+        for(var j = 0; j < coef.length; j++){
+            newArr.push("1500");
+            newDateArr.push("2020 01 01 00:00:00.000 GMT");
+        }
+        latestTransactions.push(newArr);
+        latestTransactionDates.push(newDateArr);
+        coinBalance[i] = 0;
+        coinValues[i] = 1;
+    }
+
+    // Go around once and find the earliest ledger, start there
+    // Check the next ledger over. If it's freed up
+    // Go once around to find the ledger with the most 
+    // For each item in that ledger (starting from the bottom )
+    var rowsProcessed = 0;
+    // BAD ALGORITHM: read everything in every ledger
+    
+    for(var i = 0; i < ledgerArray.length; i++){
+        var currentLedger = ledgerArray[i].split('\n');
+        for(var j = currentLedger.length-1; j >= 0; j--){
+            var currentRow = currentLedger[j].trim('\r').split(',');
+            // Process row
+            rowsProcessed ++;
+            if(currentRow.length < 5){
+                continue;
+            }
+            if(currentRow[3] == "trade"){
+                // Get our balances
+
+                // If we are the 1st transactionist
+                if(currentRow[4] == userID){
+                    // If we paid USD, deduct
+                    if(currentRow[5] == "usd"){
+                        usdBalance -= parseFloat(currentRow[6]);
+                    } else {
+                    // Otherwise, deduct coin
+                        var coinTypeIndex = coinNameToIndex.get(currentRow[5]);
+                        coinBalance[coinTypeIndex] -= parseInt(currentRow[6]);
+                    }
+
+                    // If we received USD
+                    if(currentRow[8] == 'usd'){
+                        usdBalance += parseFloat(currentRow[9]);
+                    } else {
+                    // Otherwise, add coin
+                        var coinTypeIndex = coinNameToIndex.get(currentRow[8].toString());
+                        coinBalance[coinTypeIndex] += parseInt(currentRow[9]);
+                    }
+                }
+                // If we are the 2nd transactionist, do everything inverted
+                if(currentRow[7] == userID){
+                    // If we paid USD, deduct
+                    if(currentRow[5] == "usd"){
+                        usdBalance += parseFloat(currentRow[6]);
+                    } else {
+                    // Otherwise, deduct coin
+                        var coinTypeIndex = coinNameToIndex.get(currentRow[5]);
+                        coinBalance[coinTypeIndex] += parseInt(currentRow[6]);
+                    }
+
+                    // If we received USD
+                    if(currentRow[8] == 'usd'){
+                        usdBalance -= parseFloat(currentRow[9]);
+                    } else {
+                    // Otherwise, add coin
+                        var coinTypeIndex = coinNameToIndex.get(currentRow[8]);
+                        coinBalance[coinTypeIndex] -= parseInt(currentRow[9]);
+                    }
+                }
+
+                // Determine market value
+
+                if(currentRow[4] == 'market' && currentRow[5] != "usd" && currentRow[7] != 'market'){
+                    coinValues[coinNameToIndex.get(currentRow[5])] += parseInt(currentRow[6]);
+                }
+
+                if(currentRow[7] == 'market' && currentRow[8] != "usd" && currentRow[4] != 'market'){
+                    coinValues[coinNameToIndex.get(currentRow[8])] += parseInt(currentRow[9]);
+                }
+
+                if(currentRow[4] != 'market' && currentRow[5] != "usd" && currentRow[7] == 'market'){
+                    coinValues[coinNameToIndex.get(currentRow[5])] -= parseInt(currentRow[6]);
+                }
+
+                if(currentRow[7] != 'market' && currentRow[8] != "usd" && currentRow[4] == 'market'){
+                    coinValues[coinNameToIndex.get(currentRow[8])] -= parseInt(currentRow[9]);
+                }
+
+                /*
+                // OLD METHOD
+                var contendingPrice = 0;
+                var coinIndex = 0;
+                // Determine if coin was exchanged for collars
+                if(currentRow[5] == "usd" && currentRow[8] != "usd"){
+                    contendingPrice = parseFloat(currentRow[6]) / Math.abs(parseInt(currentRow[9]));
+                    coinIndex = coinNameToIndex.get(currentRow[8]); 
+                }else if(currentRow[8] == "usd" && currentRow[5] != "usd"){
+                    contendingPrice = parseFloat(currentRow[9]) / Math.abs(parseInt(currentRow[6]));
+                    coinIndex = coinNameToIndex.get(currentRow[5]); 
+                }else{
+                    continue;
+                }
+
+                var contendingDate =  currentRow[0];
+                contendingIndex = coef.length;
+                while(contendingIndex > 0 && latestTransactionDates[coinIndex][contendingIndex-1].localeCompare(contendingDate) == -1){
+                    contendingIndex --;
+                }
+                var carryOverPrice = contendingPrice;
+                var carryOverDate = contendingDate;
+                var tempPrice, tempDate;
+                for(var k = contendingIndex; k < coef.length; k++){
+                    tempPrice = latestTransactions[coinIndex][k];
+                    tempDate = latestTransactionDates[coinIndex][k];
+                    latestTransactions[coinIndex][k] = carryOverPrice;
+                    latestTransactionDates[coinIndex][k] = carryOverDate;
+                    carryOverPrice = tempPrice;
+                    carryOverDate = tempDate;
+                }*/
+            }
+        }
+    }
+
+
+    /*for(var i = 0; i < latestTransactions.length; i++){
+        coinValues[i] = generateFluctuation();
+        for(var j = 0; j < coef.length; j++){
+            coinValues[i] += coef[j] * latestTransactions[i][j];
+        }
+    }*/
+}
+
+var generateFluctuation = function(){
+    return (Math.random() * 1);
+}
+
+var getHighestCoinValue = function(){
+    let maxVal = coinValues[0];
+    for(var i = 1; i < coinNames.length; i++){
+        var nextVal = coinValues[i];
+        if(nextVal > maxVal){
+            maxVal = nextVal;
+        }
+    }
+    return maxVal;
+}
+var getLowestCoinValue = function(){
+    let minVal = coinValues[0];
+    for(var i = 1; i < coinValues.length; i++){
+        var nextVal = coinValues[i];
+        if(nextVal < minVal){
+            minVal = nextVal;
+        }
+    }
+    return minVal;
+}
+
+var generateTimestamp = function(){
+    
+    const today = new Date();
+    return today.getUTCFullYear() + ' ' + 
+            ('0' + today.getUTCMonth()).substring(today.getUTCMonth().toString().length-1) + ' ' + 
+            ('0' + today.getUTCDay()).substring(today.getUTCDay().toString().length-1) + ' ' +
+            ('0' + today.getUTCHours()).substring(today.getUTCHours().toString().length-1) + ':' + 
+            ('0' + today.getUTCMinutes()).substring(today.getUTCMinutes().toString().length-1) + ':' + 
+            ('0' + today.getUTCSeconds()).substring(today.getUTCSeconds().toString().length-1) + '.' + 
+            today.getUTCMilliseconds() + " GMT";
+}
+
+var createTransaction = function(coinId, amount){
+    if(userID == ""){
+        alert("NOT LOGGED IN DUMMY");
+        return;
+    }
+
+    if(coinBalance[coinId] < -amount){
+        alert("You don't have enough of that coin to trade!");
+        return;
+    }
+
+    var ledgerText;
+
+    var request = new XMLHttpRequest();
+    request.open('GET', 'https://s3.amazonaws.com/saulcoin.com/' + userID + '.ledger', true);
+    request.send(null);
+    request.onreadystatechange = function () {
+        if (request.readyState === 4 && request.status === 200) {
+            ledgerText = (request.responseText);
+            publishTransaction(coinId, amount, ledgerText);
+        }
+    }
+
+    
+}
+
+var publishTransaction = function(coinId, amount, ledger){
+
+
+    var newEntry = generateTimestamp() + "," + currentSe + "," + currentEp + ",trade,";
+
+    if (amount > 0) {
+        var marketValueUSD = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(coinValues[coinId] * Math.abs(amount) * marketSellRate);
+        newEntry += userID + ",usd," + marketValueUSD.replace(',','').substring(1) + ",market," + coinNames[coinId].toLowerCase() + "," + amount;
+    } else if (amount < 0){
+        var marketValueUSD = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(coinValues[coinId] * Math.abs(amount) * marketBuyRate);
+        newEntry += userID + ',' + coinNames[coinId].toLowerCase() + "," + -amount + ",market,usd," + marketValueUSD.replace(',','').substring(1);
+    }
+    ledger += '\n' + newEntry;
+
+    fetch("https://s3.amazonaws.com/saulcoin.com/" + userID + ".ledger",
+        {
+            method: "PUT",
+            headers: {'Content-Type': 'text/plain'}, 
+            body:ledger
+        }).then(res => {
+            drawGraph();
+        });
+}
+
+var createButtons = function(){
+    var buttonBox = document.getElementById("buttonDiv");
+    c.font = "bold 16px serif";
+    for(var i = 0; i < coinNames.length; i++){
+        var buttonHolder = document.createElement("div");
+        buttonHolder.style = "border-style: solid; border-width: 3px; border-radius: 5px; border-color: black; display: inline-block; margin-right: 12px; margin-left: 12px; margin-top: 12px; margin-bottom: 12px;";
+
+        var buyButton = document.createElement("button");
+        var buyTextNode = document.createTextNode("Buy " + coinNames[i]);
+        buyButton.appendChild(buyTextNode);
+        buyButton.classList.add("buyButton");
+        const id = i;
+        buyButton.addEventListener('click', function(){createTransaction(id, 1);});
+        buttonHolder.appendChild(buyButton);
+
+        var sellButton = document.createElement("button");
+        var sellTextNode = document.createTextNode("Sell " + coinNames[i]);
+        sellButton.appendChild(sellTextNode);
+        sellButton.classList.add("sellButton");
+        const id2 = i;
+        sellButton.addEventListener('click', function(){createTransaction(id, -1);});
+        buttonHolder.appendChild(sellButton);
+
+        buttonHolder.appendChild(document.createElement("br"));
+
+        var text = document.createElement("p");
+        var textNode = document.createTextNode("Sell for: " + coinValues[i]);
+        text.style = "font: bold 24px serif; color: black; margin-right: 12px; margin-left: 12px; margin-top: 0px; margin-bottom: 0px;";
+        coinValueText.push(textNode);
+        text.appendChild(textNode);
+        buttonHolder.appendChild(text);
+
+        buttonHolder.appendChild(document.createElement("br"));
+
+        var text2 = document.createElement("p");
+        var textNode2 = document.createTextNode("Buy for: " + coinValues[i]);
+        text2.style = "font: bold 24px serif; color: black; margin-right: 12px; margin-left: 12px; margin-top: 0px; margin-bottom: 0px;";
+        coinSellText.push(textNode2);
+        text2.appendChild(textNode2);
+        buttonHolder.appendChild(text2);
+
+        buttonHolder.appendChild(document.createElement("br"));
+
+        var text = document.createElement("p");
+        var textNode = document.createTextNode("OWNED: " + coinBalance[i]);
+        text.style = "font: bold 24px serif; color: black; margin-right: 12px; margin-left: 12px; margin-top: 0px; margin-bottom: 0px;";
+        coinBalanceText.push(textNode);
+        text.appendChild(textNode);
+        buttonHolder.appendChild(text);
+
+        buttonBox.appendChild(buttonHolder);
+        
+        
+        var img = new Image();
+        img.src = coinURLs[i];
+
+        coinImages.push(img);
+
+        coinNameToIndex.set(coinNames[i].toLocaleLowerCase(), i);
+        
+    }
+    
+    var bankHolder = document.createElement("div");
+    bankHolder.style = "border-style: solid; border-width: 3px; border-radius: 5px; border-color: black; display: inline-block; margin-right: 12px; margin-left: 12px; margin-top: 12px; margin-bottom: 12px;";
+
+    buttonBox.appendChild(bankHolder);
+
+    var username = document.createElement("p");
+    usernameNode = document.createTextNode("Logged in as: " + userID);
+    username.style = "font: bold 24px serif; text-align: right; color: black; margin-right: 12px; margin-left: 12px; margin-top: 0px; margin-bottom: 0px;";
+    username.appendChild(usernameNode);
+    bankHolder.appendChild(username);
+
+    var logoutButton = document.createElement("button");
+    var logoutButtonNode = document.createTextNode("Log out");
+    logoutButton.appendChild(logoutButtonNode);
+    logoutButton.classList.add("sellButton");
+    logoutButton.addEventListener('click', function(){location.reload();});
+    bankHolder.appendChild(logoutButton);
+
+
+    buttonBox.appendChild(document.createElement("br"));
+    var bankAccount = document.createElement("p");
+    bankAccountNode = document.createTextNode("Bank Account: $" + usdBalance);
+    bankAccount.style = "font: bold 24px serif; text-align: right; color: black; margin-right: 12px; margin-left: 12px; margin-top: 0px; margin-bottom: 0px;";
+    bankAccount.appendChild(bankAccountNode);
+    bankHolder.appendChild(bankAccount);
+
+    buttonBox.appendChild(document.createElement("br"));
+    var netWorth = document.createElement("p");
+    netWorthNode = document.createTextNode("NetWorth: $" + calculateNetWorth());
+    netWorth.style = "font: bold 24px serif; text-align: right; color: black; margin-right: 12px; margin-left: 12px; margin-top: 0px; margin-bottom: 0px;";
+    netWorth.appendChild(netWorthNode);
+    bankHolder.appendChild(netWorth);
+
+
+}
+
+
+
+var drawGraph = function(){
+    updateClient();
+
+    c.fillStyle = "#68ff81";
+    c.fillRect(0,0,width,height);
+    c.fillStyle = "black";
+    c.fillRect(0,600,width,3);
+    c.textAlign = "center";
+    c.font = "bold 24px serif";
+    for(var i = 1; i <= 10; i++){
+        c.fillRect((width / 11 ) * i, 0, 2, 600);
+        c.fillText("S4E" + i, (width / 11 ) * i, 620);
+    }
+    var buttonHolder = document.getElementById("buttonDiv");
+    c.font = "bold 16px serif";
+    
+    var range = 0;
+
+    for(var i = 0; i < coinNames.length; i++){
+        var coinValue = coinValues[i];
+        var maxVal = getHighestCoinValue();
+        var minVal = getLowestCoinValue();
+        var range = maxVal - minVal;
+    }
+
+    for(var i = 0; i < coinNames.length; i++){
+
+        coinValueText[i].nodeValue = "Buy for: " + new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(coinValues[i] * marketSellRate);
+        coinSellText[i].nodeValue = "Sell for: " + new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(coinValues[i] * marketBuyRate);
+        coinBalanceText[i].nodeValue = "OWNED: " + coinBalance[i];
+        bankAccountNode.nodeValue = "Bank Account: " + new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(usdBalance);
+        netWorthNode.nodeValue = "Net Worth: " + new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(calculateNetWorth());
+
+
+
+        var x = (width / 11 ) * currentEp;
+        var y = 550 - ((coinValues[i] - minVal) / range) * 500;
+        
+        c.drawImage(coinImages[i], x-25, y-25, 50, 50);
+        c.textAlign = "right";
+        c.fillText(coinNames[i], x-30, y);
+        c.textAlign = "left";
+        c.fillText(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'USD' }).format(coinValues[i]), x+30, y);
+    }
+}
+
+var beginLoop = function(){
+}
+
+
+function getID() {
+    (async () => {
+        var tryID = prompt("Enter User ID:");
+        var tryPassword = prompt("Enter passphrase:");
+        var actualPassword = "";
+        var request = new XMLHttpRequest();
+
+        request.onreadystatechange = function () {
+            if (request.readyState === 4 && request.status === 200) {
+                actualPassword = request.responseText.split('\n')[0].split(' ')[1].trim('\R');
+            }
+        }
+        request.onloadend = function (){
+            if(request.status > 299){
+                alert('User ID/passphrase is incorrect, please call saul');
+                getID();
+                return;
+            }
+        }
+        request.open('GET', 'https://s3.amazonaws.com/saulcoin.com/' + tryID + '.ledger', false);
+        request.send();
+        if(actualPassword != tryPassword){
+            alert('User ID/passphrase is incorrect, please call saul');
+            getID();
+            return;
+        }else{
+            userID = tryID;
+            usernameNode = document.createTextNode("Logged in as: " + userID);
+            usernameNode.nodeValue = userID;
+            bankAccountNode = document.createTextNode("Bank Account: $" );
+            setInterval(drawGraph, 1500);
+            createButtons();
+            drawGraph();
+        }
+    })();
+}
+
+
+window.addEventListener('load', (event) => {
+    getID();
+});
+
+</script>
+</html>
